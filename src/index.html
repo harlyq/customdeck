@@ -2,15 +2,34 @@
 <html>
 
 <head>
-    <script src="interact.js" type="text/javascript"></script>
-    <script src="customdeck.js" type="text/javascript"></script>
-    <style href="customdeck.css" type="text/css" rel="stylesheet"></style>
+    <!--script src="es6-map-shim.js" type="text/javascript"></script>
+    <script src="interact.js" type="text/javascript"></script-->
+    <script src="lazy.js" type="text/javascript"></script>
+    <script src="virtualdeck.js" type="text/javascript"></script>
+    <script src="mancala.js" type="text/javascript"></script>
+    <!--style href="customdeck.css" type="text/css" rel="stylesheet"></style-->
+
+    <style>
+    .Log {
+        height: 400px;
+        overflow: scroll;
+    }
+    </style>
+
+    <script>
+    window.onload = function() {
+        document.getElementById("EndTurn").addEventListener("click", function(e) {
+            Mancala.nextTurn();
+        });
+
+        Mancala.setup();
+        Mancala.newGame();
+    }
+    </script>
 </head>
 
 <body>
-    <div class='location'></div>
-    <div class='card'></div>
-    <div class='card'></div>
+    <button id="EndTurn">END TURN</button>
 </body>
 
 </html>

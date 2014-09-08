@@ -1,5 +1,7 @@
+lazy.js
 interact.js
 platform.js
+lazy.js.d.ts
 node_modules/*
 src/*.js
 !src/customdeck.js

@@ -3,7 +3,27 @@ module VirtualDeck {
     // roleID == playerID or roleID > playerID
     // userID == (playerID or roleID)
 
-    function clamp(val, max, min) {
+    export
+    var assert = function(cond: any) {
+        if (!cond)
+            debugger;
+    }
+
+    var logElem;
+
+    export
+    var log = function(msg: string) {
+        if (!logElem) {
+            logElem = document.createElement('div');
+            logElem.classList.add('Log');
+            document.body.appendChild(logElem);
+        }
+
+        msg += '<br/>' + logElem.innerHTML;
+        logElem.innerHTML = msg;
+    }
+
+    function clamp < T > (val: T, max: T, min: T) {
         if (val < min) return min;
         else if (val > max) return max;
         else return val;
@@ -29,14 +49,19 @@ module VirtualDeck {
 
         constructor(public cardID: number) {}
 
+        copy(other: VCard): VCard {
+            this.location = other.location;
+            this.cardID = other.cardID;
+
+            for (var i in other.values)
+                this.values[i] = other.values[i];
+
+            return this;
+        }
+
         clone(): VCard {
             var card = new VCard(this.cardID);
-            card.location = this.location;
-
-            for (var i in this.values)
-                card.values[i] = this.values[i];
-
-            return card;
+            return card.copy(this);
         }
 
         save(): any {
@@ -59,6 +84,10 @@ module VirtualDeck {
             [userID: number]: Visibility
         } = {};
         addTo: PositionType = PositionType.Top;
+
+        get numCards(): number {
+            return this.cards.length;
+        }
 
         constructor(public name: string, public locationID: number, public userID: number) {}
 
@@ -191,12 +220,14 @@ module VirtualDeck {
 
     //-------------------------------------------
     export class VDeck {
-        cards: VCard[] = []; // these cards are used for a new game
+        cards: VCard[] = [];
+        backupCards: VCard[] = []; // these cards are used for a new game
 
         constructor(public name: string, public deckID: number) {}
 
         addCard(card: VCard) {
             this.cards.push(card);
+            this.backupCards.push(card.clone());
         }
 
         containsCard(card: VCard) {
@@ -205,8 +236,10 @@ module VirtualDeck {
 
         // bring all the cards into the game, cards are clone, so they don't modify the original
         playAllCards(location: VLocation) {
-            for (var i = 0; i < this.cards.length; ++i)
-                location.insertCard(this.cards[i].clone());
+            for (var i = 0; i < this.cards.length; ++i) {
+                this.cards[i].copy(this.backupCards[i]);
+                location.insertCard(this.cards[i]);
+            }
         }
 
         save(): any {
@@ -340,10 +373,34 @@ module VirtualDeck {
             return null;
         }
 
+        recordMove(name: string, args: any) {
+            this.moveList.push([name, args]);
+        }
+
+        boardElem: HTMLDivElement;
+        printBoard() {
+            if (!this.boardElem) {
+                this.boardElem = document.createElement('div');
+                this.boardElem.classList.add('Board');
+                document.body.appendChild(this.boardElem);
+            }
+
+            var str = '';
+            for (var i in this.locationMap) {
+                var location = this.locationMap[i];
+                var cards = location.getCards();
+                str += location.name + ' = ' + cards.map((card) => {
+                    return card.cardID
+                }).join(' ') + ' (' + cards.length + ')<br/>';
+            }
+            this.boardElem.innerHTML = str;
+        }
+
         // --- Commands ---
         newGame() {
             this.moveList.length = 0;
-            this.moveList.push(['newGame', arguments]);
+            this.recordMove('newGame', arguments);
+            log('nameGame');
 
             for (var i in this.locationMap)
                 this.locationMap[i].reset();
@@ -353,7 +410,9 @@ module VirtualDeck {
         }
 
         shuffle(location: VLocation) {
-            this.moveList.push(['shuffle', arguments]);
+            assert(location);
+            this.recordMove('shuffle', arguments);
+            log('shuffle ' + location.name);
 
             var cards = location.cards;
             var cardsLength = cards.length
@@ -365,27 +424,39 @@ module VirtualDeck {
         }
 
         playDeck(deck: VDeck, location: VLocation) {
-            this.moveList.push(['playDeck', arguments]);
+            assert(deck);
+            assert(location);
+            this.recordMove('playDeck', arguments);
+            log('playDeck ' + deck.name + ' -> ' + location.name);
+
             deck.playAllCards(location);
         }
 
         moveCards(fromLocation: VLocation, fromIndex: number, count: number, toLocation: VLocation, toIndex: number) {
-            this.moveList.push(['moveCards', arguments]);
+            assert(fromLocation);
+            assert(toLocation);
+            this.recordMove('moveCards', arguments);
+            log('moveCards ' + fromLocation.name + ':' + fromIndex + '(' + count + ') -> ' + toLocation.name + ':' + toIndex);
 
-            for (var i = 0; i < count; ++i) {
+            var numCards = Math.min(count, fromLocation.numCards);
+            for (var i = 0; i < numCards; ++i) {
                 var card = this.getCardByLocation(fromLocation, fromIndex);
                 toLocation.insertCard(card, toIndex + i);
             }
         }
 
         moveCard(card: VCard, toLocation: VLocation) {
-            this.moveList.push(['moveCard', arguments]);
+            assert(card);
+            assert(toLocation);
+            this.recordMove('moveCard', arguments);
+            log('moveCard ' + card.cardID + ' -> ' + toLocation.name);
 
             toLocation.moveCard(card);
         }
 
         swapCards(location: VLocation, aIndex: number, bIndex: number) {
-            this.moveList.push(['swapCards', arguments]);
+            this.recordMove('swapCards', arguments);
+            log('swapCards ' + location.name + ':' + aIndex + ' -> ' + bIndex);
 
             location.swapCards(aIndex, bIndex);
         }
@@ -393,49 +464,23 @@ module VirtualDeck {
         setValues(card: VCard, values: {
             [key: string]: any
         }) {
-            this.moveList.push(['setValues', arguments]);
+            this.recordMove('setValues', arguments);
 
             for (var i in values) {
                 card.values[i] = values[i];
             }
         }
 
-        pickString(userID: number, variable: string, values: string[]): string {
-            this.moveList.push(['pickString', arguments]);
+        pick < T > (userID: number, values: T[]): T {
+            this.recordMove('pick', arguments);
+            log('pick from ' + values.length + ' choices (' + userID + ')');
+
             if (userID === this.BANK) {
-                var value = values[~~Math.random() * values.length];
-                this.setString(variable, value);
-                return value;
+                return values[Math.floor(Math.random() * values.length)];
             }
 
-            // otherwise get a player to chose
-        }
-
-        setString(variable: string, value: string) {
-            this.variables[variable] = value;
-        }
-
-        getString(variable: string): string {
-            return this.variables[variable];
-        }
-
-        pickNumber(userID: number, variable: string, values: number[]): number {
-            this.moveList.push(['pickNumber', arguments]);
-            if (userID === this.BANK) {
-                var value = values[~~Math.random() * values.length];
-                this.setNumber(variable, value);
-                return value;
-            }
-
-            // otherwise get a player to chose
-        }
-
-        setNumber(variable: string, value: number) {
-            this.variables[variable] = value.toString();
-        }
-
-        getNumber(variable: string): number {
-            return parseInt(this.variables[variable]);
+            // get the player to chose
+            return values[Math.floor(Math.random() * values.length)];
         }
 
         // --- Load/Save ---
