@@ -6,3 +6,5 @@ node_modules/*
 src/*.js
 !src/customdeck.js
 !src/mancala.js
+!src/virtualdeck.js
+!src/statemachine.js
