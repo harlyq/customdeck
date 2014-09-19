@@ -2,7 +2,7 @@ module StateMachine {
     export interface IState {
         onEnter ? : (root ? : StateChart) => void;
         onExit ? : (root ? : StateChart) => void;
-        onUpdate ? : (root ? : StateChart) => boolean;
+        onStep ? : (root ? : StateChart) => boolean;
         subStateChart ? : StateChart;
         transitions ? : {
             [transition: string]: (root ? : StateChart) => IState; // if returns false, then transition fails
@@ -44,7 +44,7 @@ module StateMachine {
             return this.nextState !== null;
         }
 
-        update() {
+        step() {
             if (!this.currentState && this.nextState) {
                 this.currentState = this.nextState;
                 if (this.nextState && this.nextState.onEnter)
@@ -54,8 +54,8 @@ module StateMachine {
 
             if (this.currentState) {
                 var isFinished = true;
-                if (this.currentState.onUpdate)
-                    isFinished = this.currentState.onUpdate(this);
+                if (this.currentState.onStep)
+                    isFinished = this.currentState.onStep(this);
 
                 if (isFinished) {
                     if (this.currentState.onExit)

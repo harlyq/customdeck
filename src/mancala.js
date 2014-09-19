@@ -109,7 +109,7 @@ var Mancala;
     };
 
     var turn = {
-        onUpdate: function (root) {
+        onStep: function (root) {
             var pickedPit = mancala.pick('pickedPit', currentPlayer, pits[currentPlayer].filter(function (pit) {
                 return pit.numCards > 0;
             }));

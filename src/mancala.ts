@@ -107,7 +107,7 @@ module Mancala {
     };
 
     var turn: StateMachine.IState = {
-        onUpdate: function(root: StateMachine.StateChart): boolean {
+        onStep: function(root: StateMachine.StateChart): boolean {
             var pickedPit: VirtualDeck.VLocation = mancala.pick(
                 'pickedPit',
                 currentPlayer,

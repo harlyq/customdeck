@@ -34,7 +34,7 @@ var StateMachine;
             return this.nextState !== null;
         };
 
-        StateChart.prototype.update = function () {
+        StateChart.prototype.step = function () {
             if (!this.currentState && this.nextState) {
                 this.currentState = this.nextState;
                 if (this.nextState && this.nextState.onEnter)
@@ -44,8 +44,8 @@ var StateMachine;
 
             if (this.currentState) {
                 var isFinished = true;
-                if (this.currentState.onUpdate)
-                    isFinished = this.currentState.onUpdate(this);
+                if (this.currentState.onStep)
+                    isFinished = this.currentState.onStep(this);
 
                 if (isFinished) {
                     if (this.currentState.onExit)
