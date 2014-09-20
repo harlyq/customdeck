@@ -1,3 +1,4 @@
+/// <reference path="greensock.d.ts" />
 /*export*/
 class CardLayout {
     private _func: {
@@ -86,8 +87,27 @@ class CardLayout {
             var left = this.getLeft(i, numCards, card.offsetWidth); // - options.left;
             var top = this.getTop(i, numCards, card.offsetHeight); // - options.top;
 
-            card.style.position = 'absolute';
+            //card.style.position = 'absolute';
             card.style[this.transformKeyword] = 'translate(' + left + 'px,' + top + 'px)';
+        }
+    }
+
+    animate(duration: number, cards ? : any) {
+        var options = this.options;
+        if (typeof cards === 'undefined')
+            cards = options.element.children;
+
+        var numCards = cards.length;
+        for (var i = 0; i < numCards; ++i) {
+            var card = cards[i];
+            var left = this.getLeft(i, numCards, card.offsetWidth); // - options.left;
+            var top = this.getTop(i, numCards, card.offsetHeight); // - options.top;
+
+            card.style.position = 'absolute';
+            TweenMax.to(card, duration, {
+                left: left + 'px',
+                top: top + 'px'
+            });
         }
     }
 
@@ -220,9 +240,14 @@ CardLayoutPrototype.attributeChangedCallback = function(attrName, oldVal, newVal
     }
 }
 
-CardLayoutPrototype._position = function(cards ? : any) {
+CardLayoutPrototype.positionCards = function(cards ? : any) {
     if (this.cardLayout)
         this.cardLayout.position(cards);
+}
+
+CardLayoutPrototype.animateCards = function(cards ? : any) {
+    if (this.cardLayout)
+        this.cardLayout.animate(cards);
 }
 
 CardLayoutPrototype.appendChild = function(newElement: Node) {
