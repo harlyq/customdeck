@@ -5,7 +5,7 @@ class CardLayout {
         [layout: string]: (index: number, count: number, options: CardLayout.Options) => number
     } = {};
     private options: CardLayout.Options = {};
-    private transformKeyword: string = '';
+    static transformKeyword: string = '';
 
     constructor(options: CardLayout.Options) {
         var thisOptions = this.options;
@@ -27,15 +27,17 @@ class CardLayout {
         this.define('stack', CardLayout.getStack);
         this.define('random', CardLayout.getRandom);
 
-        var elem = document.createElement('div');
-        var transformStrings = ['transform', 'OTransform', 'webkitTransform', 'MozTransform', 'msTransform'];
-        for (var j = 0; j < transformStrings.length; ++j) {
-            if (transformStrings[j] in elem.style) {
-                this.transformKeyword = transformStrings[j];
-                break;
+        if (!CardLayout.transformKeyword) {
+            var elem = document.createElement('div');
+            var transformStrings = ['transform', 'OTransform', 'webkitTransform', 'MozTransform', 'msTransform'];
+            for (var j = 0; j < transformStrings.length; ++j) {
+                if (transformStrings[j] in elem.style) {
+                    CardLayout.transformKeyword = transformStrings[j];
+                    break;
+                }
             }
+            //CardLayout.transformKeyword = 'webkitTransform';
         }
-        this.transformKeyword = 'webkitTransform';
     }
 
     setOptions(options: CardLayout.Options) {
@@ -53,61 +55,42 @@ class CardLayout {
             thisOptions[i] = options[i];
     }
 
-    // func returns a number in the range 0 (left-most) to 1 (right-most)
+    // fn returns a number in the range 0 (left-most) to 1 (right-most)
     define(layout: string,
-        func: (index: number, count: number, options: CardLayout.Options) => number) {
-        this._func[layout] = func;
+        fn: (index: number, count: number, options: CardLayout.Options) => number) {
+        this._func[layout] = fn;
     }
 
-    position(cards ? : any) {
-        var options = this.options;
-        if (typeof cards === 'undefined')
-            cards = options.element.children;
+    static position(card: HTMLElement, i: number, left: number, top: number) {
+        card.style.position = 'absolute';
+        card.style.left = left + 'px';
+        card.style.top = top + 'px';
+    }
 
-        var numCards = cards.length;
-        for (var i = 0; i < numCards; ++i) {
-            var card = cards[i];
-            var left = this.getLeft(i, numCards, card.offsetWidth);
-            var top = this.getTop(i, numCards, card.offsetHeight);
+    static translate(card: HTMLElement, i: number, left: number, top: number) {
+        card.style.position = 'absolute';
+        card.style[CardLayout.transformKeyword] = 'translate(' + left + 'px,' + top + 'px)';
+    }
 
-            card.style.position = 'absolute';
-            card.style.left = left + 'px';
-            card.style.top = top + 'px';
+    forEach(fn: (card: any, i: number, left: number, top: number) => void);
+    forEach(cards: any, fn: (card: any, i: number, left: number, top: number) => void);
+    forEach(cardsOrFn: any, fn ? : (card: any, left: number, top: number) => void) {
+        var cards = cardsOrFn;
+        if (typeof cardsOrFn === 'function') {
+            fn = cardsOrFn;
+            cards = this.options.element.children;
         }
-    }
+        if (typeof fn === 'undefined')
+            return; // nothing to do
 
-    translate(cards ? : any) {
         var options = this.options;
-        if (typeof cards === 'undefined')
-            cards = options.element.children;
-
         var numCards = cards.length;
         for (var i = 0; i < numCards; ++i) {
             var card = cards[i];
             var left = this.getLeft(i, numCards, card.offsetWidth); // - options.left;
             var top = this.getTop(i, numCards, card.offsetHeight); // - options.top;
 
-            //card.style.position = 'absolute';
-            card.style[this.transformKeyword] = 'translate(' + left + 'px,' + top + 'px)';
-        }
-    }
-
-    animate(duration: number, cards ? : any) {
-        var options = this.options;
-        if (typeof cards === 'undefined')
-            cards = options.element.children;
-
-        var numCards = cards.length;
-        for (var i = 0; i < numCards; ++i) {
-            var card = cards[i];
-            var left = this.getLeft(i, numCards, card.offsetWidth); // - options.left;
-            var top = this.getTop(i, numCards, card.offsetHeight); // - options.top;
-
-            card.style.position = 'absolute';
-            TweenMax.to(card, duration, {
-                left: left + 'px',
-                top: top + 'px'
-            });
+            fn.call(this, card, i, left, top);
         }
     }
 
@@ -117,12 +100,12 @@ class CardLayout {
 
     getLeft(index: number, count: number, cardwidth: number) {
         var options = this.options;
-        return (this.getX(index, count) + 1) * (options.width - cardwidth) / 2 + index * options.offsetx; // + options.left;
+        return (this.getX(index, count) + 1) * (options.width - cardwidth) / 2 + index * options.offsetx;
     }
 
     getTop(index: number, count: number, cardheight: number) {
         var options = this.options;
-        return (this.getY(index, count) + 1) * (options.height - cardheight) / 2 + index * options.offsety; // + options.top;
+        return (this.getY(index, count) + 1) * (options.height - cardheight) / 2 + index * options.offsety;
     }
 
     getInverseTopLeft(top: number, left: number, count: number, cardwidth: number, layoutLeft: number, layoutTop: number, layoutWidth: number, layoutHeight: number): number {
@@ -240,9 +223,9 @@ CardLayoutPrototype.attributeChangedCallback = function(attrName, oldVal, newVal
     }
 }
 
-CardLayoutPrototype.positionCards = function(cards ? : any) {
+CardLayoutPrototype.forEach = function(cardsOrFn: any, fn ? : (card: any, i: number, left: number, top: number) => void) {
     if (this.cardLayout)
-        this.cardLayout.position(cards);
+        this.cardLayout.forEach(cardsOrFn, fn);
 }
 
 CardLayoutPrototype.animateCards = function(cards ? : any) {
@@ -253,25 +236,25 @@ CardLayoutPrototype.animateCards = function(cards ? : any) {
 CardLayoutPrototype.appendChild = function(newElement: Node) {
     HTMLElement.prototype.appendChild.call(this, newElement);
     if (this.cardLayout)
-        this.cardLayout.position();
+        this.cardLayout.forEach(CardLayout.position);
 }
 
 CardLayoutPrototype.removeChild = function(oldElement: Node) {
     HTMLElement.prototype.removeChild.call(this, oldElement);
     if (this.cardLayout)
-        this.cardLayout.position();
+        this.cardLayout.forEach(CardLayout.position);
 }
 
 CardLayoutPrototype.insertBefore = function(newElement: Node, referenceElement: Node) {
     HTMLElement.prototype.insertBefore.call(this, newElement, referenceElement);
     if (this.cardLayout)
-        this.cardLayout.position();
+        this.cardLayout.forEach(CardLayout.position);
 }
 
 CardLayoutPrototype.replaceChild = function(newElement: Node, oldElement: Node) {
     HTMLElement.prototype.replaceChild.call(this, newElement, oldElement);
     if (this.cardLayout)
-        this.cardLayout.position();
+        this.cardLayout.forEach(CardLayout.position);
 }
 
 interface Document {
